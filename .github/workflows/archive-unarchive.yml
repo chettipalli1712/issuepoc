@@ -1,0 +1,54 @@
+name: Archive/Unarchive Repository
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  process-archive-unarchive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for approval
+        id: check_approval
+        run: |
+          if [[ "${{ github.event.comment.body }}" =~ ^\s*approve\s* ]]; then
+            echo "Approved=true" >> $GITHUB_ENV
+          else
+            echo "Approved=false" >> $GITHUB_ENV
+          fi
+
+      - name: Get issue details
+        id: get_issue_details
+        run: |
+          ISSUE_NUMBER=${{ github.event.issue.number }}
+          COMMENTS=$(gh issue view $ISSUE_NUMBER --json comments -q '.comments[].body')
+          echo "COMMENTS=$COMMENTS" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract repository and action
+        id: extract_info
+        run: |
+          if [[ "${{ env.APPROVED }}" == "true" ]]; then
+            echo "${{ env.COMMENTS }}" | grep -P '^Repository:\s*(\S+)' | awk '{print $2}' > repo.txt
+            echo "${{ env.COMMENTS }}" | grep -P '^Action:\s*(\S+)' | awk '{print $2}' > action.txt
+            REPO=$(cat repo.txt)
+            ACTION=$(cat action.txt)
+            echo "REPO=$REPO" >> $GITHUB_ENV
+            echo "ACTION=$ACTION" >> $GITHUB_ENV
+          else
+            echo "Approval required to proceed."
+            exit 1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Archive or Unarchive Repository
+        if: ${{ env.APPROVED == 'true' }}
+        uses: octokit/request-action@v2.0.0
+        with:
+          route: POST /repos/{owner}/{repo}/archive
+          owner: ${{ env.REPO_OWNER }}
+          repo: ${{ env.REPO_NAME }}
+          archive: ${{ env.ACTION == 'archive' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
