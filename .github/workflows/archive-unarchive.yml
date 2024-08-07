@@ -24,7 +24,7 @@ jobs:
           COMMENTS=$(gh issue view $ISSUE_NUMBER --json comments -q '.comments[].body')
           echo "COMMENTS=$COMMENTS" >> $GITHUB_ENV
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
 
       - name: Extract repository and action
         id: extract_info
@@ -40,7 +40,7 @@ jobs:
             echo "Approval required to proceed."
             exit 1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
 
       - name: Archive or Unarchive Repository
         if: ${{ env.APPROVED == 'true' }}
@@ -51,4 +51,4 @@ jobs:
           repo: ${{ env.REPO_NAME }}
           archive: ${{ env.ACTION == 'archive' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
