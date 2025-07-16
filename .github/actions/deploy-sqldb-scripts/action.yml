@@ -1,0 +1,98 @@
+name: "Deploy SQLDb Script"
+inputs:
+  server:
+    required: true
+  dbname:
+    required: true
+  port:
+    required: true
+  username:
+    required: true
+  password:
+    required: true
+  script_path:
+    required: true
+  db_type:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Setting global variables
+      uses: actions/github-script@v6
+      id: var
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+
+          const { script_path, db_type } = ${{ toJSON(inputs) }};
+
+          if (!db_type) {
+            core.setFailed(`input 'db_type' is not provided.`);
+            return;
+          }
+
+          const updateFilePath = path.join(script_path, `update-${db_type}.sql`).toLowerCase();
+          if (!fs.existsSync(updateFilePath)) {
+            console.log(`${updateFilePath} does not exist for ${db_type}, skipping.`);
+            return;
+          }
+
+          try {
+            for (const stage of ["backup", "update", "validate", "rollback"]) {
+              const filePath = path.join(script_path, `${stage}-${db_type}.sql`).toLowerCase();
+              if (!fs.existsSync(filePath)) {
+                core.setFailed(`File not found: ${filePath}`);
+                return;
+              }
+
+              core.setOutput(`${stage}-script`, filePath);
+              core.setOutput(`${stage}-log-path`, filePath+'.log');
+            }
+          } catch (error) {
+            core.setFailed(error.message);
+          }
+    - name: Execute Backup Script
+      id: backup
+      if: ${{ steps.var.outputs.backup-script != null }}
+      uses: ./.github/actions/run-sql-script
+      with:
+        server: ${{ inputs.server }}
+        dbname: ${{ inputs.dbname }}
+        port: ${{ inputs.port }}
+        username: ${{ inputs.username }}
+        password: ${{ inputs.password }}
+        script: ${{ steps.var.outputs.backup-script }}
+    - name: Execute Update Script
+      id: update
+      if: ${{ steps.var.outputs.update-script != null }}
+      uses: ./.github/actions/run-sql-script
+      with:
+        server: ${{ inputs.server }}
+        dbname: ${{ inputs.dbname }}
+        port: ${{ inputs.port }}
+        username: ${{ inputs.username }}
+        password: ${{ inputs.password }}
+        script: ${{ steps.var.outputs.update-script }}
+    - name: Execute Validate Script
+      id: validate
+      if: ${{ steps.var.outputs.update-script != null }}
+      uses: ./.github/actions/run-sql-script
+      with:
+        server: ${{ inputs.server }}
+        dbname: ${{ inputs.dbname }}
+        port: ${{ inputs.port }}
+        username: ${{ inputs.username }}
+        password: ${{ inputs.password }}
+        script: ${{ steps.var.outputs.validate-script }}
+    - name: Execute Rollback Script
+      id: rollback
+      if: ${{ failure() && steps.backup.conclusion == 'success' }}
+      uses: ./.github/actions/run-sql-script
+      with:
+        server: ${{ inputs.server }}
+        dbname: ${{ inputs.dbname }}
+        port: ${{ inputs.port }}
+        username: ${{ inputs.username }}
+        password: ${{ inputs.password }}
+        script: ${{ steps.var.outputs.rollback-script }}
