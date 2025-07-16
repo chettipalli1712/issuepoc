@@ -1,0 +1,174 @@
+name: "Deploy Data Patch"
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        required: true
+        options:
+        - dev
+        - uat
+        - prod
+        default: dev
+      jira_ticket:
+        type: string
+        required: true
+      snow_ticket:
+        type: string
+      script:
+        type: choice
+        default: all
+        options:
+          - all
+          - backup-ffs
+          - update-ffs
+          - validate-ffs
+          - rollback-ffs
+     
+jobs:
+  change-request-check-prod:
+    if: ${{ contains(inputs.environment, 'PROD') }}
+    runs-on: 
+      labels: [self-hosted, x64, linux, ubuntu-22.04, provisioning-essentials, prod]
+    steps:
+      - name: Check Service Now Change or Incident Ticket for PROD Deployment
+        uses: manulife-gwam/aw-github-workflows-actions/.github/actions/check-change-and-incident-ticket@v1
+        timeout-minutes: 5
+        with:
+          SNOW_USER: ${{ secrets.SNOW_USER }}
+          SNOW_PASS: ${{ secrets.SNOW_PASS }}
+          ticket_number: ${{ inputs.snow_ticket }}
+
+  execute-single-sqldb-script:
+    name: Execute Single SQLDB Data Patch Script
+    if: "${{ inputs.script != 'all' }}"
+    runs-on: 
+      labels: [self-hosted, x64, linux, ubuntu-22.04, provisioning-essentials, prod]
+    timeout-minutes: 15
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setting global variables
+        uses: actions/github-script@v6
+        id: var
+        with:
+          script: |
+            const path = require('path');
+
+            const { jira_ticket, script } = ${{ toJSON(inputs) }}
+
+            if (!jira_ticket) {
+              core.setFailed(`input 'jira_ticket' is not provided.`);
+              return;
+            }
+            if (!script) {
+              core.setFailed(`input 'script' is not provided.`);
+              return;
+            }
+
+            const scriptPath = path.join('scripts', jira_ticket).toLowerCase()
+            if (script.endsWith('ffs')) {
+              core.setOutput('ffs-script', path.join(scriptPath, script + '.js'));
+            } else {
+              core.setFailed(`input 'script' should end with 'ffs'.`);
+              return;
+            }
+
+            core.setOutput('mail-from', 'GWAM_Asia_Wealth_Data_Services@manulifeam.com')
+            core.setOutput('mail-to', 'GWAM_Asia_Wealth_Data_Services@manulifeam.com')
+
+            core.setOutput('gh-run-url', `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`)
+      - name: Run FFS Script
+        if: ${{ steps.var.outputs.ffs-script != null }}
+        uses: ./.github/actions/run-sql-script
+        with:
+          server: ${{ secrets.FFS_SERVER }}
+          dbname: ${{ secrets.FFS_DATABASE_NAME }}
+          port: ${{ secrets.FFS_PORT }}
+          username: ${{ secrets.FFS_USERNAME }}
+          password: ${{ secrets.FFS_PASSWORD }}
+          script: ${{ steps.var.outputs.ffs-script }}
+   
+  execute-sqldb-scripts:
+    name: Execute SQLDB Data Patch Scripts
+    if: "${{ inputs.script == 'all' }}"
+    runs-on: 
+      labels: [self-hosted, x64, linux, ubuntu-22.04, provisioning-essentials, prod]
+    timeout-minutes: 15
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Setting global variables
+        uses: actions/github-script@v6
+        id: var
+        with:
+          script: |
+            const path = require('path');
+
+            const { jira_ticket } = ${{ toJSON(inputs) }}
+
+            if (!jira_ticket) {
+              core.setFailed(`input 'jira_ticket' is not provided.`);
+              return;
+            }
+
+            core.setOutput('script-path', path.join("scripts", jira_ticket).toLowerCase())
+
+            core.setOutput('mail-from', 'GWAM_Asia_Wealth_Data_Services@manulifeam.com')
+            core.setOutput('mail-to', 'GWAM_Asia_Wealth_Data_Services@manulifeam.com')
+
+            core.setOutput('gh-run-url', `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`)
+      
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Deploy FFS Data Patch Scripts
+        id: ffs-scripts
+        uses: ./.github/actions/deploy-sqldb-scripts
+        with:
+          db_type: ffs
+          server: ${{ secrets.FFS_SERVER }}
+          dbname: ${{ secrets.FFS_DATABASE_NAME }}
+          port: ${{ secrets.FFS_PORT }}
+          username: ${{ secrets.FFS_USERNAME }}
+          password: ${{ secrets.FFS_PASSWORD }}
+          script_path: ${{ steps.var.outputs.script-path }}
+
+      - name: Upload logs
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: '${{ inputs.jira_ticket }}-${{ github.run_id }}-sql-logs'
+          path: '${{ steps.var.outputs.script-path }}/*.log'
+          
+      - name: Send success mail
+        if: success()
+        uses: dawidd6/action-send-mail@v3.10.0 # Node.js 16
+        with:
+          server_address: mail.manulife.com
+          server_port: 25
+          from: ${{ steps.var.outputs.mail-from }}
+          to: ${{ steps.var.outputs.mail-to }}
+          subject: ${{ format('[{0}][INFO] {1} script deployment success', inputs.environment, inputs.jira_ticket) }}
+          body: |
+            Deployment of script ${{ inputs.jira_ticket }}
+            -----------------
+            FFS: ${{ steps.ffs-scripts.conclusion }}
+           
+            ${{ steps.var.outputs.gh-run-url }}
+            
+      - name: Send failure mail
+        if: failure()
+        uses: dawidd6/action-send-mail@v3.10.0 # Node.js 16
+        with:
+          server_address: mail.manulife.com
+          server_port: 25
+          from: ${{ steps.var.outputs.mail-from }}
+          to: ${{ steps.var.outputs.mail-to }}
+          subject: ${{ format('[{0}][ERROR] {1} script deployment failed', inputs.environment, inputs.jira_ticket) }}
+          body: |
+            Deployment of script ${{ inputs.jira_ticket }}
+            -----------------
+            FFS: ${{ steps.ffs-scripts.conclusion }}
+         
+            ${{ steps.var.outputs.gh-run-url }}
