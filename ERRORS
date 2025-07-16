@@ -1,6 +1,2 @@
-Error: /runner/_work/gwam-asia-sql-poc/gwam-asia-sql-poc/./.github/actions/run-sql-script/action.yml (Line: 19, Col: 7): Required property is missing: shell
-Error: /runner/_work/gwam-asia-sql-poc/gwam-asia-sql-poc/./.github/actions/run-sql-script/action.yml (Line: 22, Col: 7): Required property is missing: shell
-Error: GitHub.DistributedTask.ObjectTemplating.TemplateValidationException: The template is not valid. /runner/_work/gwam-asia-sql-poc/gwam-asia-sql-poc/./.github/actions/run-sql-script/action.yml (Line: 19, Col: 7): Required property is missing: shell,/runner/_work/gwam-asia-sql-poc/gwam-asia-sql-poc/./.github/actions/run-sql-script/action.yml (Line: 22, Col: 7): Required property is missing: shell
-   at GitHub.DistributedTask.ObjectTemplating.TemplateValidationErrors.Check()
-   at GitHub.Runner.Worker.ActionManifestManager.ConvertRuns(IExecutionContext executionContext, TemplateContext templateContext, TemplateToken inputsToken, String fileRelativePath, MappingToken outputs)
-   at GitHub.Runner.Worker.ActionManifestManager.Load(IExecutionContext executionContext, String manifestFile)
+docker: Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: exec: "./script.sh": permission denied: unknown.
+Error: Process completed with exit code 126.
