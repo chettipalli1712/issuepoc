@@ -1,0 +1,6 @@
+Error: /runner/_work/gwam-asia-sql-poc/gwam-asia-sql-poc/./.github/actions/run-sql-script/action.yml (Line: 19, Col: 7): Required property is missing: shell
+Error: /runner/_work/gwam-asia-sql-poc/gwam-asia-sql-poc/./.github/actions/run-sql-script/action.yml (Line: 22, Col: 7): Required property is missing: shell
+Error: GitHub.DistributedTask.ObjectTemplating.TemplateValidationException: The template is not valid. /runner/_work/gwam-asia-sql-poc/gwam-asia-sql-poc/./.github/actions/run-sql-script/action.yml (Line: 19, Col: 7): Required property is missing: shell,/runner/_work/gwam-asia-sql-poc/gwam-asia-sql-poc/./.github/actions/run-sql-script/action.yml (Line: 22, Col: 7): Required property is missing: shell
+   at GitHub.DistributedTask.ObjectTemplating.TemplateValidationErrors.Check()
+   at GitHub.Runner.Worker.ActionManifestManager.ConvertRuns(IExecutionContext executionContext, TemplateContext templateContext, TemplateToken inputsToken, String fileRelativePath, MappingToken outputs)
+   at GitHub.Runner.Worker.ActionManifestManager.Load(IExecutionContext executionContext, String manifestFile)
