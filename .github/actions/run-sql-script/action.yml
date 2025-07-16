@@ -12,19 +12,23 @@ inputs:
     required: true
   script:
     required: true
+
 runs:
   using: composite
   steps:
-    - name: Creating Docker Image
-      uses: docker/build-push-action@v4
-      with:
-        context: .
-        file: Dockerfile
-        build-args: |
-          "SERVER=${{ inputs.server }}"
-          "DB_NAME=${{ inputs.dbname }}"
-          "PORT=${{ inputs.port }}"
-          "USERNAME=${{ inputs.username }}"
-          "PASSWORD=${{ inputs.password }}"
-          "SCRIPT_FILE=./${{ inputs.script }}"
-          "LOG_FILE=./${{ inputs.script }}.log"
+    - name: Build Docker image
+      run: docker build -t sql-runner .
+
+    - name: Run SQL script in container
+      run: |
+        docker run --rm \
+          -e SERVER="${{ inputs.server }}" \
+          -e DB_NAME="${{ inputs.dbname }}" \
+          -e PORT="${{ inputs.port }}" \
+          -e USERNAME="${{ inputs.username }}" \
+          -e PASSWORD="${{ inputs.password }}" \
+          -e SCRIPT_FILE="./${{ inputs.script }}" \
+          -e LOG_FILE="./${{ inputs.script }}.log" \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          sql-runner
