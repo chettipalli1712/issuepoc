@@ -1,2 +1,6 @@
-docker: Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: exec: "./script.sh": permission denied: unknown.
-Error: Process completed with exit code 126.
+Connecting to: ***
+Database: ***
+User: ***
+Script: ./scripts/wds-6846/backup-ffs.sql
+Sqlcmd: Error: Microsoft ODBC Driver 17 for SQL Server : Cannot open server "***" requested by the login.  The login failed..
+Error: Process completed with exit code 1.
