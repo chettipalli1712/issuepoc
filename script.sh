@@ -1,13 +1,16 @@
 #!/bin/bash
-set +xe
-set -o pipefail
+set -eo pipefail
 
-SERVER=$1
-DB_NAME=$2
-USERNAME=$3
-PASSWORD=$4
-SCRIPT_FILE=$5
-LOG_FILE=$6
+echo "Connecting to: $SERVER"
+echo "Database: $DB_NAME"
+echo "User: $USERNAME"
+echo "Script: $SCRIPT_FILE"
 
-exec 2>&1
-opt/mssql-tools/bin/sqlcmd -S $SERVER -d $DB_NAME -U $USERNAME -P $PASSWORD -i $SCRIPT_FILE -I
+# Run the SQL script
+/opt/mssql-tools/bin/sqlcmd \
+  -S "$SERVER,$PORT" \
+  -d "$DB_NAME" \
+  -U "$USERNAME" \
+  -P "$PASSWORD" \
+  -i "$SCRIPT_FILE" \
+  -I | tee "$LOG_FILE"
