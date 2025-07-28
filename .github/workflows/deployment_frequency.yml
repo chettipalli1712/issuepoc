@@ -1,0 +1,86 @@
+name: Generate Deployment Frequency Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      from_date:
+        description: "From Date (YYYY-MM-DD)"
+        required: true
+      to_date:
+        description: "To Date (YYYY-MM-DD)"
+        required: true
+      email_list:
+        description: "Comma-separated email addresses"
+        required: false
+  workflow_run:
+    workflows: ["CI Repo Mapping"]
+    types:
+      - completed    
+        
+permissions: write-all
+        
+jobs:
+  generate-report:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+    runs-on: [ self-hosted, linux, x64, gwam, provisioning-essentials, ubuntu-22.04, prod ]
+
+    env:
+      FROM_DATE: ${{ github.event.inputs.from_date }}
+      TO_DATE: ${{ github.event.inputs.to_date }}
+      EMAIL_RECIPIENT: ${{ github.event.inputs.email_list || 'GWAM_Tech_SA_Reporting_Analytics@manulife.com,GWAM_DT_DevOps@jhancock.com' }}
+      GITHUB_EVENT_NAME: ${{ github.event_name }}
+
+    steps:
+      - name: Setup Auth
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.BLD_ENG_APP_ID }}
+          private-key: ${{ secrets.BLD_ENG_APP_PVT_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install PyGithub pandas openpyxl requests
+
+      - name: Run reporting script
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}      
+        run: python scripts/generate_ci_report.py
+
+      - name: Upload Excel report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci_report
+          path: data/final_ci_report.xlsx
+
+      # - name: Upload consolidated ci map
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: consolidated-ci-repo-map
+      #     path: data/consolidated_ci_repo_map.json
+
+      - name: Send Email with Report
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: mail.manulife.com
+          server_port: 25
+          subject: CI Change Ticket Report
+          to: ${{ env.EMAIL_RECIPIENT }}
+          from: GWAM_DT_DevOps@jhancock.com
+          body: |
+            Hello,
+
+            Please find the attached deployment frequency report.
+
+            Regards,
+            GWAM Build Engineering Team
+          attachments: data/final_ci_report.xlsx

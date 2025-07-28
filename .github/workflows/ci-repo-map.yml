@@ -1,0 +1,47 @@
+name: CI Repo Mapping
+
+on:
+  schedule:
+    - cron: '0 4 16 * *' # 16th of every month at midnight EST (4 AM UTC)
+    - cron: '0 4 28-31 * *' # last day of every month at midnight EST (4 AM UTC)
+  workflow_dispatch: 
+
+permissions:
+    contents: write
+    actions: read
+    
+jobs:
+  extract-ci-repo-map:
+    runs-on: [ self-hosted, linux, x64, gwam, provisioning-essentials, ubuntu-22.04, prod ]
+
+    steps:
+      - name: Setup Auth
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.BLD_ENG_APP_ID }}
+          private-key: ${{ secrets.BLD_ENG_APP_PVT_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install PyGithub requests pandas openpyxl
+
+      - name: Run CI-Repo extraction script
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          COMMIT_REPO: manulife-gwam/eng-audit-action
+        run: python scripts/extract_ci_repo_map.py
+
+      # - name: Upload Report
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: ci_repo_map_excel
+      #     path: data/ci_repo_map.xlsx
