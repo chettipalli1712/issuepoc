@@ -1,9 +1,9 @@
 name: CI Repo Mapping
 
 on:
-  schedule:
-    - cron: '0 4 16 * *' # 16th of every month at midnight EST (4 AM UTC)
-    - cron: '0 4 28-31 * *' # last day of every month at midnight EST (4 AM UTC)
+  # schedule:
+  #   - cron: '0 4 16 * *' # 16th of every month at midnight EST (4 AM UTC)
+  #   - cron: '0 4 28-31 * *' # last day of every month at midnight EST (4 AM UTC)
   workflow_dispatch: 
 
 permissions:
