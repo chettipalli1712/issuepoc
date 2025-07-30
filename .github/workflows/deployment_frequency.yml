@@ -68,19 +68,19 @@ jobs:
       #     name: consolidated-ci-repo-map
       #     path: data/consolidated_ci_repo_map.json
 
-      - name: Send Email with Report
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: mail.manulife.com
-          server_port: 25
-          subject: CI Change Ticket Report
-          to: ${{ env.EMAIL_RECIPIENT }}
-          from: GWAM_DT_DevOps@jhancock.com
-          body: |
-            Hello,
+      # - name: Send Email with Report
+      #   uses: dawidd6/action-send-mail@v3
+      #   with:
+      #     server_address: mail.manulife.com
+      #     server_port: 25
+      #     subject: CI Change Ticket Report
+      #     to: ${{ env.EMAIL_RECIPIENT }}
+      #     from: GWAM_DT_DevOps@jhancock.com
+      #     body: |
+      #       Hello,
 
-            Please find the attached deployment frequency report.
+      #       Please find the attached deployment frequency report.
 
-            Regards,
-            GWAM Build Engineering Team
-          attachments: data/final_ci_report.xlsx
+      #       Regards,
+      #       GWAM Build Engineering Team
+      #     attachments: data/final_ci_report.xlsx
